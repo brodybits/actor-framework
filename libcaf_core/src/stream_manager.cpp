@@ -246,4 +246,14 @@ void stream_manager::input_closed(error) {
   // nop
 }
 
+stream_slot
+stream_manager::add_unsafe_outbound_path_impl(strong_actor_ptr next) {
+  CAF_ASSERT(next != nullptr);
+  CAF_ASSERT(out().terminal() == false);
+  auto slot = assign_next_pending_slot();
+  add_unsafe_outbound_path(std::move(next), slot, nullptr,
+                           no_stages, make_message_id());
+  return slot;
+}
+
 } // namespace caf

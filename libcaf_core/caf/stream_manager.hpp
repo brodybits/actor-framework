@@ -23,6 +23,8 @@
 #include <cstdint>
 #include <cstddef>
 
+#include "caf/actor.hpp"
+#include "caf/actor_cast.hpp"
 #include "caf/downstream_msg.hpp"
 #include "caf/fwd.hpp"
 #include "caf/mailbox_element.hpp"
@@ -191,6 +193,22 @@ public:
                                 mailbox_element::forwarding_stack stages,
                                 message_id mid);
 
+  /// Creates an outbound path to `next` without any type checking.
+  /// @pre `next != nullptr`
+  /// @pre `self()->pending_stream_managers_[slot] == this`
+  /// @pre `out().terminal() == false`
+  /// @private
+  template <class Out, class... Ts>
+  output_stream<Out, Ts...> add_unsafe_outbound_path(strong_actor_ptr next);
+
+  /// Creates an outbound path to `next` without any type checking.
+  /// @pre `next != nullptr`
+  /// @pre `self()->pending_stream_managers_[slot] == this`
+  /// @pre `out().terminal() == false`
+  /// @private
+  template <class Out, class... Ts>
+  output_stream<Out, Ts...> add_unsafe_outbound_path(actor next);
+
   /// Creates an inbound path to the current sender without any type checking.
   template <class Result, class In>
   stream_result<Result> add_unsafe_inbound_path(const stream<In>& in);
@@ -234,6 +252,12 @@ protected:
   /// implementation does nothing.
   virtual void output_closed(error reason);
 
+  // -- implementation details -------------------------------------------------
+
+  stream_slot add_unsafe_outbound_path_impl(strong_actor_ptr next);
+
+  // -- member variables -------------------------------------------------------
+
   /// Points to the parent actor.
   scheduled_actor* self_;
 
@@ -273,6 +297,18 @@ template <class Out, class... Ts>
 output_stream<Out, Ts...>
 stream_manager::add_unsafe_outbound_path() {
   return {0, this->assign_next_pending_slot(), this};
+}
+
+template <class Out, class... Ts>
+output_stream<Out, Ts...>
+stream_manager::add_unsafe_outbound_path(strong_actor_ptr next) {
+  return {0, add_unsafe_outbound_path_impl(std::move(next)), this};
+}
+
+template <class Out, class... Ts>
+output_stream<Out, Ts...> stream_manager::add_unsafe_outbound_path(actor next) {
+  auto ptr = actor_cast<strong_actor_ptr>(std::move(next));
+  return {0, add_unsafe_outbound_path_impl(std::move(ptr)), this};
 }
 
 template <class Result, class In>
